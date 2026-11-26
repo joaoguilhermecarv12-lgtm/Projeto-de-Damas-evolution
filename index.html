@@ -1,0 +1,14 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Damas Evolution</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<section id="menu" class="scr on"><h1>DAMAS EVOLUTION</h1><p class="sub" id="who"></p>
+<button class="btn pri" data-go="ranked">PARTIDA RANQUEADA</button><button class="btn" data-go="vsai">JOGAR CONTRA O COMPUTADOR</button><button class="btn" data-go="friend">JOGAR COM AMIGO</button>
+<div class="grid"><button class="btn" id="perfil">Perfil</button><button class="btn" id="histb">Histórico</button><button class="btn" id="trofeus">Troféus</button><button class="btn" id="cfg">Configurações</button><button class="btn" id="rules">Como jogar</button></div></section>
+<section id="ranked" class="scr"><h2>Partida ranqueada</h2><p class="sub" id="rk"></p><div class="xp"><i id="xpb"></i></div>
+<button class="btn pri" data-go="rkai">Ranqueada contra IA</button><button class="btn" disabled style="opacity:.55">Ranqueada online · EM BREVE</button>
+<p class="sub">Busca de adversários, ranking global e temporadas exigem um servidor, ainda não implementado. Nenhuma partida online é simulada.</p><button class="btn" data-go="menu">Voltar</button></section>
+<section id="setup" class="scr"></section>
+<section id="game" class="scr"><div class="bar"><div class="pl" id="pb"><span id="nb">Pretas</span><span id="tb"></span></div><div class="pl" id="pw"><span id="nw">Brancas</span><span id="tw"></span></div></div>
+<div id="board"></div><div id="st"></div>
+<div id="rvbar" class="bar" hidden><button class="btn sm" id="rp">◀</button><span id="rl"></span><button class="btn sm" id="rn">▶</button><button class="btn sm" id="rx">Voltar</button><button class="btn sm" id="rm">Menu inicial</button></div><div class="bar"><button class="btn sm" id="undo">↶ Voltar jogada</button><button class="btn sm" id="hint">💡 Dica</button><button class="btn sm" id="rev">🔍 Revisar</button><button class="btn sm" id="pause">⏸</button><button class="btn sm" id="mn">☰ Menu</button></div></section>
+<div id="modal"><div class="box" id="mb"></div></div>
+<script src="script.js"></script></body></html>
