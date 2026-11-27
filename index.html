@@ -9,7 +9,21 @@
 <section id="setup" class="scr"></section>
 <section id="game" class="scr"><div class="bar"><div class="pl" id="pb"><span id="nb">Pretas</span><span id="tb"></span></div><div class="pl" id="pw"><span id="nw">Brancas</span><span id="tw"></span></div></div>
 <div id="board"></div><div id="st"></div>
-<div id="rvbar" class="bar" hidden><button class="btn sm" id="rp">◀</button><span id="rl"></span><button class="btn sm" id="rn">▶</button><button class="btn sm" id="rx">Voltar</button><button class="btn sm" id="rm">Menu inicial</button></div><div class="bar"><button class="btn sm" id="undo">↶ Voltar jogada</button><button class="btn sm" id="hint">💡 Dica</button><button class="btn sm" id="rev">🔍 Revisar</button><button class="btn sm" id="pause">⏸</button><button class="btn sm" id="mn">☰ Menu</button><button class="btn sm" id="claim" hidden>Reivindicar vitória</button></div></section>
+<div id="rvbar" class="bar" hidden><button class="btn sm" id="rp">◀</button><span id="rl"></span><button class="btn sm" id="rn">▶</button><button class="btn sm" id="rx">Voltar</button><button class="btn sm" id="rm">Menu inicial</button></div><div class="bar"><button class="btn sm" id="undo">↶ Voltar jogada</button><button class="btn sm" id="hint">💡 Dica</button><button class="btn sm" id="rev">🔍 Revisar</button><button class="btn sm" id="pause">⏸</button><button class="btn sm" id="mn">☰ Menu</button><button class="btn sm" id="claim" hidden>Reivindicar vitória</button></div>
+<div id="react-bar" class="bar" hidden aria-label="Reações rápidas"><button type="button" class="btn sm" data-e="👋">👋</button><button type="button" class="btn sm" data-e="👏">👏</button><button type="button" class="btn sm" data-e="🔥">🔥</button><button type="button" class="btn sm" data-e="😂">😂</button><button type="button" class="btn sm" data-e="😮">😮</button><button type="button" class="btn sm" data-e="🤔">🤔</button></div></section>
+<div id="auth" class="ov"><div class="box">
+<div class="grid"><button type="button" class="btn" id="tab-login">Entrar</button><button type="button" class="btn" id="tab-signup">Criar conta</button></div>
+<form id="login-form" novalidate>
+<input class="inp" id="login-email" type="email" autocomplete="email" placeholder="E-mail" maxlength="254">
+<input class="inp" id="login-password" type="password" autocomplete="current-password" placeholder="Senha" maxlength="72">
+<p class="err" id="login-error" role="alert"></p><button class="btn pri" id="login-submit" type="submit">Entrar</button></form>
+<form id="signup-form" novalidate hidden>
+<input class="inp" id="signup-email" type="email" autocomplete="email" placeholder="E-mail" maxlength="254">
+<input class="inp" id="signup-username" type="text" autocomplete="username" placeholder="Nome de usuário (3 a 16)" maxlength="16">
+<input class="inp" id="signup-password" type="password" autocomplete="new-password" placeholder="Senha (mín. 8)" maxlength="72">
+<input class="hp" id="signup-hp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+<p class="err" id="signup-error" role="alert"></p><button class="btn pri" id="signup-submit" type="submit">Cadastrar</button></form>
+<button type="button" class="btn" id="auth-close">Fechar</button></div></div>
 <div id="modal"><div class="box" id="mb"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="supabase.js"></script>

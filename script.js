@@ -55,14 +55,19 @@ const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const cyc=(a,v)=>a[(a.indexOf(v)+1)%a.length],fmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
 const lvl=()=>Math.floor(S.xp/100)+1;
 function show(id){document.querySelectorAll(".scr").forEach(e=>e.classList.toggle("on",e.id==id))}
-function modal(h){$("#mb").innerHTML=h;$("#modal").classList.add("on")}const closeM=()=>$("#modal").classList.remove("on");
+function modal(h){$("#mb").innerHTML=h;$("#modal").classList.add("on")} // só para HTML estático; dados da rede usam modalN/el (sem innerHTML)
+const closeM=()=>{$("#modal").classList.remove("on");$("#auth").classList.remove("on")};
+const num=v=>Number(v)||0;
+function el(t,a={},...k){const e=document.createElement(t);Object.assign(e,a);k.flat().forEach(x=>{if(x!=null)e.appendChild(typeof x=="object"?x:document.createTextNode(String(x)))});return e}
+function modalN(...n){const mb=$("#mb");mb.textContent="";n.forEach(x=>{if(x!=null)mb.appendChild(typeof x=="object"?x:document.createTextNode(String(x)))});$("#modal").classList.add("on")}
+function okN(t,p){modalN(el("h2",{},t),el("p",{},p),el("button",{className:"btn pri",id:"ok",onclick:closeM},"Fechar"))}
 function stopClock(){clearInterval(tick);tick=null}
 function buildBoard(){const bd=$("#board");bd.innerHTML="";CELLS=[];const arr=[];for(let i=0;i<64;i++){const d=document.createElement("div");d.dataset.i=i;arr.push(d)}CELLS=arr;(G&&G.flip?[...arr].reverse():arr).forEach(d=>bd.appendChild(d))}
 function start(mode,diff,ranked,time){stopClock();closeM();leaveOnline();
  G={id:++GID,mode,diff:+diff||0,ranked:!!ranked,timed:time>0,b:newBoard(),side:1,hist:[],last:[],sel:null,hint:[],over:false,pause:false,busy:false,noCap:0,rev:null,newTo:-1,anim:false,moves:[],t:{1:time,[-1]:time},cfg:[mode,diff,ranked,time]};
  show("game");$("#nw").textContent=mode=="ai"?S.av+" "+S.nick:"Brancas";$("#nb").textContent=mode=="ai"?"IA "+DIFF[G.diff][0]:"Pretas";
  $("#tw").style.visibility=$("#tb").style.visibility=G.timed?"visible":"hidden";
- $("#undo").hidden=!(mode=="friend"||(mode=="ai"&&!ranked));$("#hint").hidden=G.ranked;$("#rev").hidden=$("#pause").hidden=false;$("#claim").hidden=true;
+ $("#undo").hidden=!(mode=="friend"||(mode=="ai"&&!ranked));$("#hint").hidden=G.ranked;$("#rev").hidden=$("#pause").hidden=false;$("#claim").hidden=true;$("#react-bar").hidden=true;
  buildBoard();render();ui();showT();if(G.timed)startClock()}
 function startClock(){let l=Date.now();const id=G.id;tick=setInterval(()=>{const n=Date.now(),dt=(n-l)/1000;l=n;if(!G||G.id!=id||G.over||G.pause)return;
  G.t[G.side]=Math.max(0,G.t[G.side]-dt);showT();if(G.t[G.side]<=0)finish(-G.side,"Tempo esgotado")},200)} // só atualiza texto: nunca reconstrói o tabuleiro
@@ -134,7 +139,7 @@ function openReview(i){const h=S.hist[i];if(!h||!Array.isArray(h.mv))return;clos
  try{for(const[f,p,c]of h.mv){hist.push({b,side,last,noCap:0,t:{1:0,[-1]:0}});b=apply(b,{from:f,path:p,caps:c});last=[f,p[p.length-1]];side=-side}}catch(e){return modal(`<h2>Partida indisponível</h2><p>Os lances guardados estão inválidos.</p><button class="btn pri" id="ok">Fechar</button>`),$("#ok").onclick=closeM}
  G={id:++GID,mode:"review",over:true,b,side,hist,last,sel:null,hint:[],rev:0,newTo:-1,anim:false,busy:false,pause:false,ranked:false,timed:false,noCap:0,moves:[],t:{1:0,[-1]:0},cfg:null};
  show("game");$("#nw").textContent="Brancas";$("#nb").textContent="Pretas";$("#tw").style.visibility=$("#tb").style.visibility="hidden";
- $("#undo").hidden=$("#hint").hidden=$("#rev").hidden=$("#pause").hidden=$("#claim").hidden=true;buildBoard();render();ui()}
+ $("#undo").hidden=$("#hint").hidden=$("#rev").hidden=$("#pause").hidden=$("#claim").hidden=$("#react-bar").hidden=true;buildBoard();render();ui()}
 function toMenu(){closeM();stopClock();leaveOnline();G=null;show("menu");home()}
 /* ===== INTERFACE ===== */
 let SU={diff:2};
@@ -150,9 +155,9 @@ function prof(){const l=LG[lg()],n=S.w+S.l+S.d,pc=n?Math.round(100*S.w/n):0,mn=M
  const pts=S.rh.map((v,i)=>`${i*200/Math.max(1,S.rh.length-1)},${60-(v-mn)*55/(mx-mn)}`).join(" ");
  modal(`<h2>${esc(S.av)} ${esc(S.nick)}</h2><p>${l[2]} ${l[1]} · ${S.games<10?"Classificatória "+S.games+"/10 · ":""}Rating ${S.rating} (melhor ${S.best})</p><p>${S.w} V · ${S.l} D · ${S.d} E · ${pc}% de vitórias · 🏆 ${Object.keys(S.tro).length}/${TRO.length}</p><svg viewBox="-4 -4 208 68" style="width:100%"><polyline points="${pts}" fill="none" stroke="var(--pur)" stroke-width="2"/></svg><p>Dados salvos neste aparelho; não é uma conta online.</p><button class="btn" id="chg">Trocar nickname/avatar</button><button class="btn pri" id="ok">Fechar</button>`);$("#chg").onclick=nick;$("#ok").onclick=closeM}
 function nick(){let av=S.av;const AV=["♟","♛","🦊","🐺","🦉","🐯","🚀","🌿"];
- modal(`<h2>Seu perfil</h2><p>Nickname de 3 a 16 caracteres (letras, números, _ ou -). Único apenas neste aparelho; nomes únicos globais exigem servidor.</p><input id="nk" maxlength="16" value="${esc(S.nick)}" placeholder="Nickname" style="padding:12px;border-radius:10px;border:1px solid #4a4843;background:var(--bg);color:var(--txt);font-size:1rem"><div class="grid" style="grid-template-columns:repeat(4,1fr)">${AV.map(a=>`<button class="btn av" data-a="${a}">${a}</button>`).join("")}</div><p id="er" style="color:#e57373"></p><button class="btn pri" id="sv">Salvar</button>${S.nick?'<button class="btn" id="cn">Cancelar</button>':""}`);
+ modal(`<h2>Seu perfil</h2><p>Nickname de 3 a 16 caracteres (letras, números, _ ou -). Único apenas neste aparelho; nomes únicos globais exigem servidor.</p><input id="nk" maxlength="16" value="${esc(S.nick)}" placeholder="Nickname" style="padding:12px;border-radius:10px;border:1px solid #4a4843;background:var(--bg);color:var(--txt);font-size:1rem"><div class="grid" style="grid-template-columns:repeat(4,1fr)">${AV.map(a=>`<button class="btn av" data-a="${a}">${a}</button>`).join("")}</div><p id="er" style="color:#e57373"></p><button class="btn pri" id="sv">Salvar</button><button class="btn" id="cn">${S.nick?"Cancelar":"Agora não (jogar como Convidado)"}</button>`);
  const mark=()=>document.querySelectorAll(".av").forEach(b=>b.style.borderColor=b.dataset.a==av?"var(--pur)":"");mark();
- document.querySelectorAll(".av").forEach(b=>b.onclick=()=>{av=b.dataset.a;mark()});if(S.nick)$("#cn").onclick=closeM;
+ document.querySelectorAll(".av").forEach(b=>b.onclick=()=>{av=b.dataset.a;mark()});$("#cn").onclick=()=>{if(!S.nick){S.nick="Convidado";save()}closeM();home()};
  $("#sv").onclick=()=>{const v=$("#nk").value.trim();if(!/^[\p{L}\p{N}_-]{3,16}$/u.test(v))return $("#er").textContent="Use 3 a 16 letras, números, _ ou -.";S.nick=v;S.av=av;save();closeM();home()}}
 function cfg(){const row=(k,l,v)=>`<button class="btn" data-k="${k}">${l}: <b>${v}</b></button>`;
  modal(`<h2>Configurações</h2><p>Aparência salva neste aparelho; é só visualização e não afeta o adversário.</p>${row("t","Tabuleiro",S.t)}${row("sw","Peças brancas",S.sw)}${row("sb","Peças pretas",S.sb)}${row("kc","Aparência das damas",S.kc)}${row("fx","Efeitos",S.fx?"ligados":"desligados")}${row("an","Animações",S.an)}${row("m","Interface",S.m)}<button class="btn pri" id="ok">Fechar</button>`);
@@ -183,17 +188,27 @@ $("#pause").onclick=()=>{if(!G||G.over)return;G.pause=true;let sure=false;const 
 /* ===== CONTA ONLINE (Supabase) — perfil online é independente do perfil local ===== */
 const NET=typeof Net!=="undefined"?Net:null;
 function acctLine(){const p=NET&&NET.profile();$("#acct").textContent=!NET||!NET.ready()?"Online indisponível":p?`🌐 ${p.username} · Elo ${p.elo}`:NET.user()?"Carregando conta…":"Offline · entre para jogar online"}
-function conta(){if(!NET||!NET.ready()){modal(`<h2>Conta online</h2><p>Serviço online indisponível (verifique a conexão). Os modos offline continuam funcionando.</p><button class="btn pri" id="ok">Fechar</button>`);return void($("#ok").onclick=closeM)}
+function conta(){if(!NET||!NET.ready())return okN("Conta online","Serviço online indisponível (verifique a conexão). Os modos offline continuam funcionando.");
  const p=NET.profile();
- if(NET.user()){modal(`<h2>${p?esc(p.username):"Conta"}</h2><p>${p?`Elo ${p.elo} · ${p.wins} V · ${p.losses} D`:"Carregando perfil…"}</p><p>${esc(NET.user().email||"")}</p><button class="btn" id="out">Sair</button><button class="btn pri" id="ok">Fechar</button>`);
-  $("#ok").onclick=closeM;return void($("#out").onclick=async()=>{await NET.signOut();closeM()})}
- authForm("in","")}
-function authForm(mode,msg){const up=mode=="up";
- modal(`<h2>${up?"Criar conta":"Entrar"}</h2><input class="inp" id="em" type="email" autocomplete="email" placeholder="E-mail">${up?'<input class="inp" id="un" maxlength="16" autocomplete="username" placeholder="Nome de usuário (3 a 16)">':""}<input class="inp" id="pw" type="password" autocomplete="${up?"new-password":"current-password"}" placeholder="Senha (mín. 6)"><p id="er" style="color:#e57373">${esc(msg)}</p><button class="btn pri" id="aok">${up?"Cadastrar":"Entrar"}</button><button class="btn" id="asw">${up?"Já tenho conta":"Criar conta"}</button><button class="btn" id="acl">Fechar</button>`);
- $("#acl").onclick=closeM;$("#asw").onclick=()=>authForm(up?"in":"up","");
- $("#aok").onclick=async()=>{const b=$("#aok");b.disabled=true;$("#er").textContent="Aguarde…";const email=$("#em").value.trim(),password=$("#pw").value;
-  const r=up?await NET.signUp({email,password,username:$("#un").value.trim()}):await NET.signIn({email,password});b.disabled=false;
-  if(!r.ok)return void($("#er").textContent=r.error);if(up&&r.needsConfirm)return authForm("in","Conta criada! Confirme o e-mail e depois entre.");closeM()}}
+ if(NET.user())return modalN(el("h2",{},p?p.username:"Conta"),el("p",{},p?`Elo ${num(p.elo)} · ${num(p.wins)} V · ${num(p.losses)} D`:"Carregando perfil…"),el("p",{},NET.user().email||""),
+  el("button",{className:"btn",id:"out",onclick:async()=>{await NET.signOut();closeM()}},"Sair"),el("button",{className:"btn pri",id:"ok",onclick:closeM},"Fechar"));
+ showAuth("in")}
+/* --- login/cadastro: formulários estáticos no index.html (ids únicos: login-* e signup-*) --- */
+function setTab(mode){const up=mode=="up";$("#login-form").hidden=up;$("#signup-form").hidden=!up;$("#tab-login").classList.toggle("sel",!up);$("#tab-signup").classList.toggle("sel",up)}
+function cooldownTick(btn,label,ms){const end=Date.now()+ms;btn.disabled=true;btn.textContent="Aguarde "+Math.ceil(ms/1000)+"s";
+ const t=setInterval(()=>{const s=Math.ceil((end-Date.now())/1000);if(s<=0){clearInterval(t);btn.disabled=false;btn.textContent=label}else btn.textContent="Aguarde "+s+"s"},250)}
+function showAuth(mode,msg){closeM();$("#auth").classList.add("on");setTab(mode);$("#login-error").textContent=mode=="in"&&msg?msg:"";$("#signup-error").textContent="";
+ const w=NET&&NET.cooldown?NET.cooldown():0;if(w>0){cooldownTick($("#login-submit"),"Entrar",w);cooldownTick($("#signup-submit"),"Cadastrar",w)}}
+const hideAuth=()=>$("#auth").classList.remove("on");
+async function submitAuth(kind){const up=kind=="up",btn=up?$("#signup-submit"):$("#login-submit"),err=up?$("#signup-error"):$("#login-error"),label=up?"Cadastrar":"Entrar";
+ if(btn.disabled||!NET)return; // bloqueia clique repetido enquanto envia
+ const email=(up?$("#signup-email"):$("#login-email")).value.trim(),password=(up?$("#signup-password"):$("#login-password")).value;
+ err.textContent="";btn.disabled=true;btn.textContent="Aguarde...";let r;
+ try{r=up?await NET.signUp({email,password,username:$("#signup-username").value.trim(),hp:$("#signup-hp").value}):await NET.signIn({email,password})}catch(e){r={ok:false,error:"Erro inesperado. Tente de novo."}}
+ if(!r.ok)err.textContent=r.error;else if(up&&r.needsConfirm)showAuth("in","Conta criada! Confirme o e-mail e depois entre.");else hideAuth();
+ const w=NET.cooldown?NET.cooldown():0;if(w>0)cooldownTick(btn,label,w);else{btn.disabled=false;btn.textContent=label}}
+$("#tab-login").onclick=()=>showAuth("in");$("#tab-signup").onclick=()=>showAuth("up");$("#auth-close").onclick=hideAuth;
+$("#login-form").onsubmit=e=>{e.preventDefault();submitAuth("in")};$("#signup-form").onsubmit=e=>{e.preventDefault();submitAuth("up")};
 $("#conta").onclick=conta;if(NET){NET.init();NET.onChange(()=>{acctLine();checkResume()})}acctLine();
 /* ===== ONLINE (Supabase Realtime Presence + Broadcast; resultado e Elo via RPC no servidor) ===== */
 // Fonte da verdade = tabela matches (lances em board_state.moves). O Broadcast só acelera a entrega; o poll de 6 s e o
@@ -201,10 +216,11 @@ $("#conta").onclick=conta;if(NET){NET.init();NET.onChange(()=>{acctLine();checkR
 const OL={ch:null,mm:null,hb:null,poll:null,timer:null,seen:0,resumed:null};
 const sbc=()=>NET&&NET.client(),rpc=(n,a)=>Promise.resolve(sbc().rpc(n,a)),sel=q=>Promise.resolve(q);
 const em=e=>/opponent_active/.test(e&&e.message||"")?"O adversário ainda está conectado.":/busy/.test(e&&e.message||"")?"Jogador ocupado em outra partida.":NET.tr(e);
-const okBtn=t=>`<h2>${t[0]}</h2><p>${t[1]}</p><button class="btn pri" id="ok">Fechar</button>`;
 function leaveOnline(){const c=sbc();[OL.ch,OL.mm].forEach(h=>{if(h&&c)c.removeChannel(h)});OL.ch=OL.mm=null;[OL.hb,OL.poll,OL.timer].forEach(clearInterval);OL.hb=OL.poll=OL.timer=null}
 function needLogin(){if(NET&&NET.ready()&&NET.user()&&NET.profile())return false;
- if(NET&&NET.ready()&&NET.user()){modal(okBtn(["Carregando…","Aguarde o perfil carregar e tente de novo."]));$("#ok").onclick=closeM}else conta();return true}
+ if(NET&&NET.ready()&&NET.user()){okN("Carregando…","Aguarde o perfil carregar e tente de novo.")}else conta();return true}
+const ok63=x=>Number.isInteger(x)&&x>=0&&x<64;
+const isMv=mv=>Array.isArray(mv)&&mv.length==3&&ok63(mv[0])&&Array.isArray(mv[1])&&mv[1].length>0&&mv[1].length<=16&&mv[1].every(ok63)&&Array.isArray(mv[2])&&mv[2].length<=16&&mv[2].every(ok63);
 const findMove=mv=>legal(G.b,G.side).find(x=>x.from===mv[0]&&JSON.stringify(x.path)===JSON.stringify(mv[1])&&JSON.stringify(x.caps)===JSON.stringify(mv[2]));
 async function activeMatch(){const me=NET.profile();if(!me)return null;
  const{data}=await sel(sbc().from("matches").select("*").eq("status","active").or(`white_player.eq.${me.id},black_player.eq.${me.id}`).order("created_at",{ascending:false}).limit(1));
@@ -212,7 +228,7 @@ async function activeMatch(){const me=NET.profile();if(!me)return null;
 /* --- matchmaking --- */
 async function queue(){if(needLogin())return;leaveOnline();const am=await activeMatch();if(am)return resumeModal(am);
  const c=sbc(),me=NET.profile(),t0=Date.now();let busy=false;const win=s=>Math.min(800,100+15*s); // janela de Elo cresce 15 pts/s
- modal(`<h2>Procurando adversário…</h2><p id="qt">0s · Elo ${me.elo} · janela ±100</p><button class="btn" id="qc">Cancelar</button>`);$("#qc").onclick=()=>{leaveOnline();closeM()};
+ modalN(el("h2",{},"Procurando adversário…"),el("p",{id:"qt"},`0s · Elo ${num(me.elo)} · janela ±100`),el("button",{className:"btn",id:"qc",onclick:()=>{leaveOnline();closeM()}},"Cancelar"));
  const ch=OL.mm=c.channel("mm:damas",{config:{presence:{key:me.id}}});
  const pair=async()=>{if(busy||OL.mm!==ch)return;const now=Date.now();let best=null;
   for(const[uid,arr]of Object.entries(ch.presenceState())){if(uid===me.id||!arr.length)continue;const o=arr[0],d=Math.abs(o.elo-me.elo);
@@ -227,59 +243,71 @@ async function queue(){if(needLogin())return;leaveOnline();const am=await active
 async function enterMatch(id){leaveOnline();await startOnline(id)}
 function resumeModal(m){modal(`<h2>Partida em andamento</h2><p>Você tem uma partida online ativa.</p><button class="btn pri" id="rs">Retomar</button><button class="btn" id="rq">Abandonar partida</button><button class="btn" id="rc">Agora não</button>`);
  $("#rs").onclick=()=>startOnline(m.id);$("#rc").onclick=closeM;
- $("#rq").onclick=async()=>{await rpc("report_result",{p_match:m.id,p_claim:m.white_player===NET.profile().id?"black":"white",p_reason:"resign"});closeM()}}
+ $("#rq").onclick=async()=>{await rpc("finish_match",{p_match:m.id,p_claim:m.white_player===NET.profile().id?"black":"white",p_reason:"resign"});closeM()}}
 async function checkResume(){const p=NET&&NET.profile();if(!p||OL.resumed===p.id||G)return;OL.resumed=p.id;const m=await activeMatch();if(m&&!G)resumeModal(m)}
 /* --- partida --- */
 function loadOnline(m,o){const me=NET.profile(),meW=m.white_player===me.id;
  G={id:++GID,mode:"online",mid:m.id,me:meW?1:-1,opp:o,flip:!meW,b:newBoard(),side:1,hist:[],last:[],sel:null,hint:[],over:false,final:false,pending:0,pause:false,busy:false,anim:false,noCap:0,rev:null,newTo:-1,moves:[],t:{1:0,[-1]:0},timed:false,ranked:false,cfg:null};
- for(const mv of(m.board_state&&m.board_state.moves)||[]){const mm=Array.isArray(mv)&&findMove(mv);if(!mm){$("#st").textContent="Histórico inválido no servidor";break}commit(mm)}
+ for(const mv of(m.board_state&&m.board_state.moves)||[]){const mm=isMv(mv)&&findMove(mv);if(!mm){$("#st").textContent="Histórico inválido no servidor";break}commit(mm)}
  const n=meW?[me,o]:[o,me];$("#nw").textContent=`${n[0].username} (${n[0].elo})`;$("#nb").textContent=`${n[1].username} (${n[1].elo})`;
- $("#tw").style.visibility=$("#tb").style.visibility="hidden";$("#undo").hidden=$("#hint").hidden=$("#pause").hidden=$("#claim").hidden=true;$("#rev").hidden=false;
+ $("#tw").style.visibility=$("#tb").style.visibility="hidden";$("#undo").hidden=$("#hint").hidden=$("#pause").hidden=$("#claim").hidden=true;$("#rev").hidden=false;$("#react-bar").hidden=false;
  buildBoard();render();ui();OL.seen=Date.now();const e=endState();if(e)onlineFinish(...e)}
 async function startOnline(id){const c=sbc(),me=NET.profile();const r=await sel(c.from("matches").select("*").eq("id",id).single());
- if(r.error||!r.data){modal(okBtn(["Erro",esc(NET.tr(r.error))]));return void($("#ok").onclick=closeM)}
+ if(r.error||!r.data){okN("Erro",NET.tr(r.error));return}
  const m=r.data,oid=m.white_player===me.id?m.black_player:m.white_player,o=await sel(c.from("profiles").select("id,username,elo").eq("id",oid).single());
- stopClock();closeM();leaveOnline();loadOnline(m,o.data||{id:oid,username:"Adversário",elo:0});show("game");await rpc("join_match",{p_match:id});
+ lastReactIn=lastReactOut=0;stopClock();closeM();leaveOnline();loadOnline(m,o.data||{id:oid,username:"Adversário",elo:0});show("game");await rpc("join_match",{p_match:id});
  OL.hb=setInterval(()=>rpc("ping_match",{p_match:id}),15000);OL.poll=setInterval(resync,6000);OL.timer=setInterval(oppWatch,1000);
  const ch=OL.ch=c.channel("match:"+id,{config:{presence:{key:me.id}}});
- ch.on("broadcast",{event:"move"},({payload})=>payload&&remoteMove(payload.n,payload.mv)).on("presence",{event:"sync"},oppWatch)
+ ch.on("broadcast",{event:"move"},({payload})=>payload&&remoteMove(payload.n,payload.mv)).on("broadcast",{event:"react"},({payload})=>remoteReaction(payload)).on("presence",{event:"sync"},oppWatch)
   .subscribe(s=>{if(s==="SUBSCRIBED")ch.track({t:Date.now()});else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT")resync()})}
 async function sendMove(m,n){const g=G,mv=[m.from,m.path,m.caps];g.pending++;if(OL.ch)OL.ch.send({type:"broadcast",event:"move",payload:{n,mv}});
  const r=await rpc("record_move",{p_match:g.mid,p_move:mv,p_n:n});g.pending--;if(r.error){$("#st").textContent="Falha ao registrar lance: "+em(r.error);resync()}}
-function remoteMove(n,mv){if(!G||G.mode!="online"||G.over)return;const k=G.moves.length;if(n<k)return;if(n>k||G.side===G.me)return void resync();
+function remoteMove(n,mv){if(!G||G.mode!="online"||G.over||!Number.isInteger(n)||!isMv(mv))return;const k=G.moves.length;if(n<k)return;if(n>k||G.side===G.me)return void resyncSoon();
  if(G.anim)return void setTimeout(()=>remoteMove(n,mv),150);
- const m=Array.isArray(mv)&&findMove(mv);if(!m){$("#st").textContent="Lance inválido do adversário ignorado";return void resync()}OL.seen=Date.now();play(m,true)}
-let syncing=false;
+ const m=findMove(mv);if(!m){$("#st").textContent="Lance inválido do adversário ignorado";return void resyncSoon()}OL.seen=Date.now();play(m,true)}
+let syncing=false,lastSoon=0;function resyncSoon(){const t=Date.now();if(t-lastSoon>=1000){lastSoon=t;resync()}} // pacotes suspeitos não geram enxurrada de consultas
+
 async function resync(){if(syncing||!G||G.mode!="online"||G.final)return;syncing=true;const g=G;
  try{const r=await sel(sbc().from("matches").select("*").eq("id",g.mid).single()),m=r.data;if(!m||G!==g||g.final)return;if(m.status!="active")return showResult(m);
   if(g.over||g.anim||g.pending)return;
   const db=(m.board_state&&m.board_state.moves)||[],loc=g.moves.map(x=>[x.from,x.path,x.caps]);let k=0;while(k<loc.length&&k<db.length&&JSON.stringify(loc[k])==JSON.stringify(db[k]))k++;
-  if(k==loc.length&&db.length==k+1&&g.side!==g.me){const mm=findMove(db[k]);if(mm)play(mm,true)}
+  if(k==loc.length&&db.length==k+1&&g.side!==g.me){const mm=isMv(db[k])&&findMove(db[k]);if(mm)play(mm,true)}
   else if(k!=loc.length||db.length!=loc.length){loadOnline(m,g.opp)}} // diverge do servidor: reconstrói a partir dele
  catch(e){console.error(e)}finally{syncing=false}}
 function oppWatch(){if(!G||G.mode!="online"||G.over)return;const here=OL.ch&&OL.ch.presenceState()[G.opp.id];if(here)OL.seen=Date.now();
  const gone=Date.now()-OL.seen,cl=$("#claim");if(gone>20000){cl.hidden=gone<65000;$("#st").textContent=gone<65000?`Adversário desconectado · reivindicar vitória em ${Math.ceil((65000-gone)/1000)}s`:"Adversário desconectado"}else cl.hidden=true}
 async function onlineFinish(w,why){if(G.over)return;G.over=true;ui();const me=G.me==1?"white":"black",opp=G.me==1?"black":"white";
  modal(`<h2>Partida encerrada</h2><p>${esc(why)}. Enviando resultado ao servidor…</p>`);
- const r=await rpc("report_result",{p_match:G.mid,p_claim:w==0?"draw":w==G.me?me:opp,p_reason:"normal"});
- if(r.error){modal(okBtn(["Erro ao enviar resultado",esc(em(r.error))]));return void($("#ok").onclick=closeM)}
+ const r=await rpc("finish_match",{p_match:G.mid,p_claim:w==0?"draw":w==G.me?me:opp,p_reason:"normal"});
+ if(r.error){okN("Erro ao enviar resultado",em(r.error));return}
  if(r.data&&r.data.pending)modal(`<h2>Partida encerrada</h2><p>${esc(why)}. Aguardando confirmação do adversário…</p>`);await resync()}
 function onlineMenu(){modal(`<h2>Abandonar a partida?</h2><p>Abandonar conta como derrota.</p><button class="btn" id="ocn">Continuar jogando</button><button class="btn" id="oab">Abandonar</button>`);
- $("#ocn").onclick=closeM;$("#oab").onclick=async()=>{await rpc("report_result",{p_match:G.mid,p_claim:G.me==1?"black":"white",p_reason:"resign"});closeM();await resync()}}
-$("#claim").onclick=async()=>{if(!G||G.mode!="online")return;const r=await rpc("report_result",{p_match:G.mid,p_claim:G.me==1?"white":"black",p_reason:"abandon"});if(r.error)$("#st").textContent=em(r.error);await resync()};
+ $("#ocn").onclick=closeM;$("#oab").onclick=async()=>{await rpc("finish_match",{p_match:G.mid,p_claim:G.me==1?"black":"white",p_reason:"resign"});closeM();await resync()}}
+$("#claim").onclick=async()=>{if(!G||G.mode!="online")return;const r=await rpc("finish_match",{p_match:G.mid,p_claim:G.me==1?"white":"black",p_reason:"abandon"});if(r.error)$("#st").textContent=em(r.error);await resync()};
 async function refreshProfile(){const p=NET.profile();if(!p)return;const r=await sel(sbc().from("profiles").select("*").eq("id",p.id).single());if(r.data){Object.assign(p,r.data);acctLine()}}
 function showResult(m){if(!G||G.final)return;G.final=true;G.over=true;clearInterval(OL.poll);clearInterval(OL.timer);OL.poll=OL.timer=null;ui();
- const id=NET.profile().id,w=m.winner,mine=m.white_player===id?m.white_delta:m.black_delta,won=w===id;
+ const id=NET.profile().id,w=m.winner,mine=num(m.white_player===id?m.white_delta:m.black_delta),won=w===id;
  const t=m.status=="disputed"?"Resultado contestado":m.status=="abandoned"?"Partida cancelada":!w?"Empate":won?"Vitória!":"Derrota";
  const why={resign:won?"O adversário abandonou.":"Você abandonou.",abandon:won?"O adversário desconectou.":"Você desconectou.",disputed:"Os resultados informados não coincidiram. Nenhum Elo foi alterado.",no_show:"O adversário não entrou na partida.",expired:"Partida expirada."}[m.ended_reason]||"";
- modal(`<h2>${t}</h2><p>${why}</p>${m.status=="finished"?`<p>Elo online: ${(mine||0)>=0?"+":""}${mine||0}${mine?"":" (sem pontuação: partida curta ou par repetido)"}</p>`:""}<button class="btn pri" id="again">Jogar online de novo</button><button class="btn" id="rvw">Revisar partida</button><button class="btn" id="home">Menu inicial</button>`);
- $("#again").onclick=()=>{toMenu();queue()};$("#rvw").onclick=()=>{closeM();if(G.hist.length){G.rev=G.hist.length-1;render();ui()}};$("#home").onclick=toMenu;refreshProfile()}
+ modalN(el("h2",{},t),el("p",{},why),m.status=="finished"?el("p",{},`Elo online: ${mine>=0?"+":""}${mine}${mine?"":" (sem pontuação: partida curta ou par repetido)"}`):null,
+  el("button",{className:"btn pri",id:"again",onclick:()=>{toMenu();queue()}},"Jogar online de novo"),
+  el("button",{className:"btn",id:"rvw",onclick:()=>{closeM();if(G.hist.length){G.rev=G.hist.length-1;render();ui()}}},"Revisar partida"),
+  el("button",{className:"btn",id:"home",onclick:toMenu},"Menu inicial"));refreshProfile()}
 /* --- ranking global --- */
-async function ranking(){if(!NET||!NET.ready())return conta();modal(`<h2>Ranking global</h2><p>Carregando…</p>`);const c=sbc();
+async function ranking(){if(!NET||!NET.ready())return conta();modalN(el("h2",{},"Ranking global"),el("p",{},"Carregando…"));const c=sbc();
  const r=await sel(c.from("profiles").select("id,username,elo,wins,losses").order("elo",{ascending:false}).limit(100));
- if(r.error){modal(okBtn(["Ranking global",esc(NET.tr(r.error))]));return void($("#ok").onclick=closeM)}
- const me=NET.profile(),rows=r.data||[];let extra="";
- if(me&&!rows.some(x=>x.id===me.id)){const q=await sel(c.from("profiles").select("id",{count:"exact",head:true}).gt("elo",me.elo));if(!q.error&&q.count!=null)extra=`<p>Sua posição: #${q.count+1} · Elo ${me.elo}</p>`}
- modal(`<h2>Ranking global</h2>${extra}<div class="tbl">${rows.length?`<table><tr><th>#</th><th>Jogador</th><th>Elo</th><th>V/D</th></tr>${rows.map((x,i)=>`<tr class="${me&&x.id===me.id?"me":""}"><td>${i+1}</td><td>${LG[lg(x.elo)][2]} ${esc(x.username)}</td><td>${x.elo}</td><td>${x.wins}/${x.losses}</td></tr>`).join("")}</table>`:"<p>Ninguém no ranking ainda.</p>"}</div><button class="btn pri" id="ok">Fechar</button>`);$("#ok").onclick=closeM}
+ if(r.error){okN("Ranking global",NET.tr(r.error));return}
+ const me=NET.profile(),rows=Array.isArray(r.data)?r.data:[];let extra=null;
+ if(me&&!rows.some(x=>x.id===me.id)){const q=await sel(c.from("profiles").select("id",{count:"exact",head:true}).gt("elo",me.elo));if(!q.error&&q.count!=null)extra=el("p",{},`Sua posição: #${num(q.count)+1} · Elo ${num(me.elo)}`)}
+ const tbl=rows.length?el("table",{},el("tr",{},["#","Jogador","Elo","V/D"].map(x=>el("th",{},x))),rows.map((x,i)=>el("tr",{className:me&&x.id===me.id?"me":""},el("td",{},i+1),el("td",{},LG[lg(num(x.elo))][2]+" "+String(x.username)),el("td",{},num(x.elo)),el("td",{},num(x.wins)+"/"+num(x.losses))))):el("p",{},"Ninguém no ranking ainda.");
+ modalN(el("h2",{},"Ranking global"),extra,el("div",{className:"tbl"},tbl),el("button",{className:"btn pri",id:"ok",onclick:closeM},"Fechar"))}
+/* --- reações rápidas (lista fechada, 1 a cada 3 s por jogador; valida ao enviar e ao receber) --- */
+const REACT=new Set(["👋","👏","🔥","😂","😮","🤔"]);let lastReactOut=0,lastReactIn=0;
+function showBubble(whiteSide,e){const pl=$(whiteSide?"#pw":"#pb"),b=document.createElement("span");b.className="bubble";b.textContent=e;pl.appendChild(b);setTimeout(()=>{if(b.parentNode)b.parentNode.removeChild(b)},2500)}
+function coolBar(){const bar=$("#react-bar"),bs=document.querySelectorAll("#react-bar button");bar.classList.add("cool");bs.forEach(b=>b.disabled=true);setTimeout(()=>{bar.classList.remove("cool");bs.forEach(b=>b.disabled=false)},3000)}
+function sendReaction(e){if(!G||G.mode!="online"||G.over||typeof e!=="string"||!REACT.has(e))return false;const t=Date.now();if(t-lastReactOut<3000)return false;lastReactOut=t;
+ if(OL.ch)OL.ch.send({type:"broadcast",event:"react",payload:{e}});showBubble(G.me==1,e);coolBar();return true}
+function remoteReaction(p){if(!G||G.mode!="online"||G.over||!p||typeof p!=="object"||typeof p.e!=="string"||!REACT.has(p.e))return false;const t=Date.now();if(t-lastReactIn<3000)return false;lastReactIn=t;showBubble(G.me==-1,p.e);return true}
+$("#react-bar").addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-e]");if(b)sendReaction(b.dataset.e)});
 $("#rkon").onclick=queue;$("#rkbd").onclick=ranking;document.addEventListener("visibilitychange",()=>{if(!document.hidden)resync()});
 home();
