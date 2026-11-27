@@ -57,12 +57,12 @@ const lvl=()=>Math.floor(S.xp/100)+1;
 function show(id){document.querySelectorAll(".scr").forEach(e=>e.classList.toggle("on",e.id==id))}
 function modal(h){$("#mb").innerHTML=h;$("#modal").classList.add("on")}const closeM=()=>$("#modal").classList.remove("on");
 function stopClock(){clearInterval(tick);tick=null}
-function buildBoard(){const bd=$("#board");bd.innerHTML="";CELLS=[];for(let i=0;i<64;i++){const d=document.createElement("div");d.dataset.i=i;bd.appendChild(d);CELLS.push(d)}}
-function start(mode,diff,ranked,time){stopClock();closeM();
+function buildBoard(){const bd=$("#board");bd.innerHTML="";CELLS=[];const arr=[];for(let i=0;i<64;i++){const d=document.createElement("div");d.dataset.i=i;arr.push(d)}CELLS=arr;(G&&G.flip?[...arr].reverse():arr).forEach(d=>bd.appendChild(d))}
+function start(mode,diff,ranked,time){stopClock();closeM();leaveOnline();
  G={id:++GID,mode,diff:+diff||0,ranked:!!ranked,timed:time>0,b:newBoard(),side:1,hist:[],last:[],sel:null,hint:[],over:false,pause:false,busy:false,noCap:0,rev:null,newTo:-1,anim:false,moves:[],t:{1:time,[-1]:time},cfg:[mode,diff,ranked,time]};
  show("game");$("#nw").textContent=mode=="ai"?S.av+" "+S.nick:"Brancas";$("#nb").textContent=mode=="ai"?"IA "+DIFF[G.diff][0]:"Pretas";
  $("#tw").style.visibility=$("#tb").style.visibility=G.timed?"visible":"hidden";
- $("#undo").hidden=!(mode=="friend"||(mode=="ai"&&!ranked));$("#hint").hidden=G.ranked;$("#rev").hidden=$("#pause").hidden=false;
+ $("#undo").hidden=!(mode=="friend"||(mode=="ai"&&!ranked));$("#hint").hidden=G.ranked;$("#rev").hidden=$("#pause").hidden=false;$("#claim").hidden=true;
  buildBoard();render();ui();showT();if(G.timed)startClock()}
 function startClock(){let l=Date.now();const id=G.id;tick=setInterval(()=>{const n=Date.now(),dt=(n-l)/1000;l=n;if(!G||G.id!=id||G.over||G.pause)return;
  G.t[G.side]=Math.max(0,G.t[G.side]-dt);showT();if(G.t[G.side]<=0)finish(-G.side,"Tempo esgotado")},200)} // só atualiza texto: nunca reconstrói o tabuleiro
@@ -76,13 +76,13 @@ function render(){if(G.anim)return;const{b,last}=view(),R=G.rev!=null,ms=!R&&!G.
   if(p){const e=document.createElement("div"),sk=skinFor(p);e.className="p"+(Math.abs(p)==2?" k":"")+(nw?" new":"");
    e.style.background=`radial-gradient(circle at 35% 30%,${sk[0]},${sk[1]})`;
    if(Math.abs(p)==2){const k=document.createElement("span");k.className="cr";k.style.color=p>0?"#7a5c00":"#f6d86b";k.textContent=(S.kc=="estrela"?"★":"♛")+"\uFE0E";e.appendChild(k)}d.appendChild(e)}}}
-function ui(){const R=G.rev!=null,ms=legal(G.b,G.side);$("#pw").classList.toggle("act",G.side==1&&!G.over);$("#pb").classList.toggle("act",G.side==-1&&!G.over);
+function ui(){const R=G.rev!=null,ms=legal(G.b,G.side);$("#st").classList.toggle("mine",G.mode=="online"&&G.side==G.me&&!G.over);$("#pw").classList.toggle("act",G.side==1&&!G.over);$("#pb").classList.toggle("act",G.side==-1&&!G.over);
  $("#rvbar").hidden=!R;if(R)$("#rl").textContent=`Posição ${Math.min(G.rev,G.hist.length)}/${G.hist.length}`;$("#rx").textContent=G.mode=="review"?"Voltar":"Sair da revisão";
  $("#rev").disabled=!G.hist.length||G.anim;$("#undo").disabled=!G.hist.length||G.over||G.busy||G.anim;
- if(R)$("#st").textContent=G.mode=="review"?"Revisão da partida · lance "+Math.min(G.rev,G.hist.length)+"/"+G.hist.length:"Revisando — a partida real não foi alterada";else if(!G.over)$("#st").textContent=(G.mode=="ai"?(G.side==1?"Sua vez":"IA pensando…"):"Vez das "+NAMES[G.side])+(ms.length&&ms[0].caps.length&&!G.busy?" · captura obrigatória":"")}
+ if(R)$("#st").textContent=G.mode=="review"?"Revisão da partida · lance "+Math.min(G.rev,G.hist.length)+"/"+G.hist.length:"Revisando — a partida real não foi alterada";else if(!G.over)$("#st").textContent=(G.mode=="ai"?(G.side==1?"Sua vez":"IA pensando…"):G.mode=="online"?(G.side==G.me?"Sua vez":"Vez de "+G.opp.username):"Vez das "+NAMES[G.side])+(ms.length&&ms[0].caps.length&&!G.busy?" · captura obrigatória":"")}
 $("#board").addEventListener("click",e=>{const el=e.target.closest("[data-i]");if(el)click(+el.dataset.i)});
 function bad(i,msg){snd.bad();const el=CELLS[i];el.classList.add("bad");$("#st").textContent=msg;setTimeout(()=>el.classList.remove("bad"),400)}
-function click(i){if(!G||G.over||G.pause||G.busy||G.anim||G.rev!=null||(G.mode=="ai"&&G.side!=1))return;const ms=legal(G.b,G.side);G.hint=[];
+function click(i){if(!G||G.over||G.pause||G.busy||G.anim||G.rev!=null||(G.mode=="ai"&&G.side!=1)||(G.mode=="online"&&G.side!=G.me))return;const ms=legal(G.b,G.side);G.hint=[];
  const m=G.sel!=null&&ms.find(x=>x.from==G.sel&&end(x)==i);if(m)return play(m);
  if(G.b[i]*G.side>0){if(ms.some(x=>x.from==i)){G.sel=i;render()}else bad(i,ms[0]&&ms[0].caps.length?"Captura obrigatória com outra peça!":"Esta peça não pode mover")}
  else if(G.sel!=null)bad(i,"Movimento inválido")}
@@ -98,13 +98,15 @@ function animateMove(m,done){let fired=false;const fin=()=>{if(!fired){fired=tru
  el.style.zIndex=5;el.style.willChange="transform";A.push(el.animate(kf,{duration:T,fill:"forwards"}));
  let t=0;m.caps.forEach((ci,k)=>{const c=CELLS[ci].firstChild;if(c&&c.animate)A.push(c.animate(full?[{transform:"scale(1)",opacity:1},{transform:"scale(1.15)",opacity:.9,boxShadow:"0 0 0 6px #ffffff55",offset:.25},{transform:"scale(.55)",opacity:0}]:[{opacity:1},{opacity:0}],{duration:full?260:100,delay:t+legs[k]*.5,fill:"both"}));t+=legs[k]});
  Promise.all(A.map(x=>x.finished)).then(fin,fin);setTimeout(fin,T+500)}
-function play(m){if(G.rev!=null){G.rev=null;render()} // se estava revisando, volta à posição real antes de animar
- const pb=G.b,to=end(m),id=G.id;G.hist.push({b:pb,side:G.side,last:G.last,noCap:G.noCap,t:{...G.t}});G.moves.push({from:m.from,path:m.path,caps:m.caps});
- G.noCap=(m.caps.length||Math.abs(pb[m.from])==1)?0:G.noCap+1;G.b=apply(pb,m);const prom=Math.abs(pb[m.from])==1&&Math.abs(G.b[to])==2;
- G.last=[m.from,to];G.sel=null;G.hint=[];m.caps.length?snd.cap():snd.mv();G.side=-G.side;G.anim=true;ui();
+function commit(m){const pb=G.b,to=end(m);G.hist.push({b:pb,side:G.side,last:G.last,noCap:G.noCap,t:{...G.t}});G.moves.push({from:m.from,path:m.path,caps:m.caps});
+ G.noCap=(m.caps.length||Math.abs(pb[m.from])==1)?0:G.noCap+1;G.b=apply(pb,m);G.last=[m.from,to];G.sel=null;G.hint=[];G.side=-G.side;
+ return Math.abs(pb[m.from])==1&&Math.abs(G.b[to])==2}
+function endState(){if(!legal(G.b,G.side).length)return[-G.side,"Sem jogadas disponíveis"];return G.noCap>=40?[0,"20 lances só com damas, sem captura"]:null}
+function play(m,remote){if(G.rev!=null){G.rev=null;render()} // se estava revisando, volta à posição real antes de animar
+ const to=end(m),id=G.id,n=G.moves.length,prom=commit(m);m.caps.length?snd.cap():snd.mv();G.anim=true;ui();
+ if(G.mode=="online"&&!remote)sendMove(m,n);
  animateMove(m,()=>{if(!G||G.id!=id||!G.anim)return;G.anim=false;G.newTo=(prom||S.an=="desligada")&&S.fx?to:-1;render();ui();
-  if(!legal(G.b,G.side).length)return finish(-G.side,"Sem jogadas disponíveis");
-  if(G.noCap>=40)return finish(0,"20 lances só com damas, sem captura");
+  const e=endState();if(e)return finish(...e);
   if(G.mode=="ai"&&G.side==-1&&!G.over){G.busy=true;ui();setTimeout(()=>aiMove(id),350)}})}
 function chooseAI(){const d=G.diff,b=G.b,ms=legal(b,-1);if(ms.length==1)return ms[0];
  if(d==1)return ms[Math.random()*ms.length|0];if(d==2)return bestMove(b,-1,3,15);if(d==3)return bestMove(b,-1,6,0);
@@ -122,7 +124,7 @@ function record(w){G.nt=[];const ai=G.mode=="ai",Ro=OPP[G.diff];let dl=0;
    dl=Math.round(K*((w==1?1:w==-1?0:.5)-E));S.rating=Math.max(100,S.rating+dl);S.games++;S.best=Math.max(S.best,S.rating);S.rh=[...S.rh,S.rating].slice(-30)}}
  S.hist=[{t:Date.now(),o:ai?"IA "+DIFF[G.diff][0]:"Amigo",r:ai?(w==1?"V":w==-1?"D":"E"):(w?NAMES[w]:"E"),dl:G.ranked?dl:null,rk:G.ranked,mv:G.moves.map(m=>[m.from,m.path,m.caps])},...S.hist].slice(0,30);
  TRO.forEach(([id,n,f])=>{if(!S.tro[id]&&f(S)){S.tro[id]=1;G.nt.push(n)}});return G.ranked?dl:null}
-function finish(w,why){if(G.over)return;G.over=true;stopClock();let t,x=0;
+function finish(w,why){if(G.mode=="online")return void onlineFinish(w,why);if(G.over)return;G.over=true;stopClock();let t,x=0;
  if(G.mode=="ai"){if(w==1){t="Vitória!";x=[0,20,40,80,100][G.diff];S.w++}else if(w==-1){t="Derrota";x=5;S.l++}else{t="Empate";x=10;S.d++}}
  else{t=w?NAMES[w]+" venceram!":"Empate";x=15;w?S.w++:S.d++}
  const lv0=lvl();S.xp+=x;const rd=record(w);save();w?snd.win():snd.bad();ui();
@@ -132,8 +134,8 @@ function openReview(i){const h=S.hist[i];if(!h||!Array.isArray(h.mv))return;clos
  try{for(const[f,p,c]of h.mv){hist.push({b,side,last,noCap:0,t:{1:0,[-1]:0}});b=apply(b,{from:f,path:p,caps:c});last=[f,p[p.length-1]];side=-side}}catch(e){return modal(`<h2>Partida indisponível</h2><p>Os lances guardados estão inválidos.</p><button class="btn pri" id="ok">Fechar</button>`),$("#ok").onclick=closeM}
  G={id:++GID,mode:"review",over:true,b,side,hist,last,sel:null,hint:[],rev:0,newTo:-1,anim:false,busy:false,pause:false,ranked:false,timed:false,noCap:0,moves:[],t:{1:0,[-1]:0},cfg:null};
  show("game");$("#nw").textContent="Brancas";$("#nb").textContent="Pretas";$("#tw").style.visibility=$("#tb").style.visibility="hidden";
- $("#undo").hidden=$("#hint").hidden=$("#rev").hidden=$("#pause").hidden=true;buildBoard();render();ui()}
-function toMenu(){closeM();stopClock();G=null;show("menu");home()}
+ $("#undo").hidden=$("#hint").hidden=$("#rev").hidden=$("#pause").hidden=$("#claim").hidden=true;buildBoard();render();ui()}
+function toMenu(){closeM();stopClock();leaveOnline();G=null;show("menu");home()}
 /* ===== INTERFACE ===== */
 let SU={diff:2};
 function openSetup(kind){SU={kind,diff:SU.diff||2,time:0};drawSetup();show("setup")}
@@ -171,11 +173,113 @@ $("#undo").onclick=undo;
 $("#rev").onclick=()=>{if(G&&G.hist.length&&!G.anim&&G.mode!="review"){G.rev=G.hist.length-1;render();ui()}};
 $("#rp").onclick=()=>{if(G&&G.rev>0){G.rev--;render();ui()}};
 $("#rn").onclick=()=>{if(!G)return;if(G.mode=="review")G.rev=Math.min(G.hist.length,G.rev+1);else{G.rev++;if(G.rev>=G.hist.length)G.rev=null}render();ui()};
-$("#rx").onclick=()=>{if(!G)return;if(G.mode=="review"){G=null;show("menu");home();histList()}else{G.rev=null;render();ui()}};$("#rm").onclick=toMenu;
-$("#mn").onclick=()=>{if(!G||G.over||G.mode=="review")toMenu();else $("#pause").onclick()};
+$("#rx").onclick=()=>{if(!G)return;if(G.mode=="review"){G=null;show("menu");home();histList()}else{G.rev=null;render();ui()}};$("#rm").onclick=()=>G&&G.mode=="online"&&!G.over?onlineMenu():toMenu();
+$("#mn").onclick=()=>{if(!G||G.over||G.mode=="review")toMenu();else if(G.mode=="online")onlineMenu();else $("#pause").onclick()};
 $("#pause").onclick=()=>{if(!G||G.over)return;G.pause=true;let sure=false;const id=G.id;
  modal(`<h2>Pausa</h2><button class="btn pri" id="cont">Continuar</button>${G.ranked?"":'<button class="btn" id="rest">Reiniciar partida</button>'}<button class="btn" id="quit">Abandonar partida</button>`);
  $("#cont").onclick=()=>{G.pause=false;closeM();if(G.mode=="ai"&&G.side==-1&&!G.busy&&!G.anim&&!G.over){G.busy=true;setTimeout(()=>aiMove(id),300)}};
  if(!G.ranked)$("#rest").onclick=()=>start(...G.cfg);
  $("#quit").onclick=e=>{if(!sure){sure=true;e.target.textContent="Confirmar abandono? Toque de novo"}else{if(G.mode=="ai"){S.l++;if(G.ranked)record(-1);save()}toMenu()}}};
+/* ===== CONTA ONLINE (Supabase) — perfil online é independente do perfil local ===== */
+const NET=typeof Net!=="undefined"?Net:null;
+function acctLine(){const p=NET&&NET.profile();$("#acct").textContent=!NET||!NET.ready()?"Online indisponível":p?`🌐 ${p.username} · Elo ${p.elo}`:NET.user()?"Carregando conta…":"Offline · entre para jogar online"}
+function conta(){if(!NET||!NET.ready()){modal(`<h2>Conta online</h2><p>Serviço online indisponível (verifique a conexão). Os modos offline continuam funcionando.</p><button class="btn pri" id="ok">Fechar</button>`);return void($("#ok").onclick=closeM)}
+ const p=NET.profile();
+ if(NET.user()){modal(`<h2>${p?esc(p.username):"Conta"}</h2><p>${p?`Elo ${p.elo} · ${p.wins} V · ${p.losses} D`:"Carregando perfil…"}</p><p>${esc(NET.user().email||"")}</p><button class="btn" id="out">Sair</button><button class="btn pri" id="ok">Fechar</button>`);
+  $("#ok").onclick=closeM;return void($("#out").onclick=async()=>{await NET.signOut();closeM()})}
+ authForm("in","")}
+function authForm(mode,msg){const up=mode=="up";
+ modal(`<h2>${up?"Criar conta":"Entrar"}</h2><input class="inp" id="em" type="email" autocomplete="email" placeholder="E-mail">${up?'<input class="inp" id="un" maxlength="16" autocomplete="username" placeholder="Nome de usuário (3 a 16)">':""}<input class="inp" id="pw" type="password" autocomplete="${up?"new-password":"current-password"}" placeholder="Senha (mín. 6)"><p id="er" style="color:#e57373">${esc(msg)}</p><button class="btn pri" id="aok">${up?"Cadastrar":"Entrar"}</button><button class="btn" id="asw">${up?"Já tenho conta":"Criar conta"}</button><button class="btn" id="acl">Fechar</button>`);
+ $("#acl").onclick=closeM;$("#asw").onclick=()=>authForm(up?"in":"up","");
+ $("#aok").onclick=async()=>{const b=$("#aok");b.disabled=true;$("#er").textContent="Aguarde…";const email=$("#em").value.trim(),password=$("#pw").value;
+  const r=up?await NET.signUp({email,password,username:$("#un").value.trim()}):await NET.signIn({email,password});b.disabled=false;
+  if(!r.ok)return void($("#er").textContent=r.error);if(up&&r.needsConfirm)return authForm("in","Conta criada! Confirme o e-mail e depois entre.");closeM()}}
+$("#conta").onclick=conta;if(NET){NET.init();NET.onChange(()=>{acctLine();checkResume()})}acctLine();
+/* ===== ONLINE (Supabase Realtime Presence + Broadcast; resultado e Elo via RPC no servidor) ===== */
+// Fonte da verdade = tabela matches (lances em board_state.moves). O Broadcast só acelera a entrega; o poll de 6 s e o
+// resync corrigem perdas. Cada cliente revalida os lances do adversário com legal() antes de aplicar.
+const OL={ch:null,mm:null,hb:null,poll:null,timer:null,seen:0,resumed:null};
+const sbc=()=>NET&&NET.client(),rpc=(n,a)=>Promise.resolve(sbc().rpc(n,a)),sel=q=>Promise.resolve(q);
+const em=e=>/opponent_active/.test(e&&e.message||"")?"O adversário ainda está conectado.":/busy/.test(e&&e.message||"")?"Jogador ocupado em outra partida.":NET.tr(e);
+const okBtn=t=>`<h2>${t[0]}</h2><p>${t[1]}</p><button class="btn pri" id="ok">Fechar</button>`;
+function leaveOnline(){const c=sbc();[OL.ch,OL.mm].forEach(h=>{if(h&&c)c.removeChannel(h)});OL.ch=OL.mm=null;[OL.hb,OL.poll,OL.timer].forEach(clearInterval);OL.hb=OL.poll=OL.timer=null}
+function needLogin(){if(NET&&NET.ready()&&NET.user()&&NET.profile())return false;
+ if(NET&&NET.ready()&&NET.user()){modal(okBtn(["Carregando…","Aguarde o perfil carregar e tente de novo."]));$("#ok").onclick=closeM}else conta();return true}
+const findMove=mv=>legal(G.b,G.side).find(x=>x.from===mv[0]&&JSON.stringify(x.path)===JSON.stringify(mv[1])&&JSON.stringify(x.caps)===JSON.stringify(mv[2]));
+async function activeMatch(){const me=NET.profile();if(!me)return null;
+ const{data}=await sel(sbc().from("matches").select("*").eq("status","active").or(`white_player.eq.${me.id},black_player.eq.${me.id}`).order("created_at",{ascending:false}).limit(1));
+ const m=data&&data[0];return m&&Date.now()-new Date(m.last_move_at).getTime()<600000?m:null}
+/* --- matchmaking --- */
+async function queue(){if(needLogin())return;leaveOnline();const am=await activeMatch();if(am)return resumeModal(am);
+ const c=sbc(),me=NET.profile(),t0=Date.now();let busy=false;const win=s=>Math.min(800,100+15*s); // janela de Elo cresce 15 pts/s
+ modal(`<h2>Procurando adversário…</h2><p id="qt">0s · Elo ${me.elo} · janela ±100</p><button class="btn" id="qc">Cancelar</button>`);$("#qc").onclick=()=>{leaveOnline();closeM()};
+ const ch=OL.mm=c.channel("mm:damas",{config:{presence:{key:me.id}}});
+ const pair=async()=>{if(busy||OL.mm!==ch)return;const now=Date.now();let best=null;
+  for(const[uid,arr]of Object.entries(ch.presenceState())){if(uid===me.id||!arr.length)continue;const o=arr[0],d=Math.abs(o.elo-me.elo);
+   if(me.id<uid&&d<=win(Math.max(now-t0,now-o.t)/1000)&&(!best||d<best.d))best={uid,d}} // só o menor id cria, evitando partidas duplicadas
+  if(!best)return;busy=true;await new Promise(r=>setTimeout(r,Math.random()*300));
+  const r=await rpc("create_match",{p_opponent:best.uid});if(r.error||!r.data){busy=false;return}
+  await ch.send({type:"broadcast",event:"match",payload:{to:best.uid,id:r.data}});enterMatch(r.data)};
+ ch.on("presence",{event:"sync"},pair).on("broadcast",{event:"match"},({payload})=>{if(payload&&payload.to===me.id&&!busy){busy=true;enterMatch(payload.id)}})
+  .subscribe(s=>{if(s==="SUBSCRIBED")ch.track({elo:me.elo,t:t0})});
+ OL.timer=setInterval(async()=>{const s=Math.floor((Date.now()-t0)/1000),q=$("#qt");if(q)q.textContent=`${s}s · Elo ${me.elo} · janela ±${win(s)}`;pair();
+  if(s%5==4&&!busy){const m=await activeMatch();if(m&&!busy&&new Date(m.created_at).getTime()>=t0-2000){busy=true;enterMatch(m.id)}}},1000)}
+async function enterMatch(id){leaveOnline();await startOnline(id)}
+function resumeModal(m){modal(`<h2>Partida em andamento</h2><p>Você tem uma partida online ativa.</p><button class="btn pri" id="rs">Retomar</button><button class="btn" id="rq">Abandonar partida</button><button class="btn" id="rc">Agora não</button>`);
+ $("#rs").onclick=()=>startOnline(m.id);$("#rc").onclick=closeM;
+ $("#rq").onclick=async()=>{await rpc("report_result",{p_match:m.id,p_claim:m.white_player===NET.profile().id?"black":"white",p_reason:"resign"});closeM()}}
+async function checkResume(){const p=NET&&NET.profile();if(!p||OL.resumed===p.id||G)return;OL.resumed=p.id;const m=await activeMatch();if(m&&!G)resumeModal(m)}
+/* --- partida --- */
+function loadOnline(m,o){const me=NET.profile(),meW=m.white_player===me.id;
+ G={id:++GID,mode:"online",mid:m.id,me:meW?1:-1,opp:o,flip:!meW,b:newBoard(),side:1,hist:[],last:[],sel:null,hint:[],over:false,final:false,pending:0,pause:false,busy:false,anim:false,noCap:0,rev:null,newTo:-1,moves:[],t:{1:0,[-1]:0},timed:false,ranked:false,cfg:null};
+ for(const mv of(m.board_state&&m.board_state.moves)||[]){const mm=Array.isArray(mv)&&findMove(mv);if(!mm){$("#st").textContent="Histórico inválido no servidor";break}commit(mm)}
+ const n=meW?[me,o]:[o,me];$("#nw").textContent=`${n[0].username} (${n[0].elo})`;$("#nb").textContent=`${n[1].username} (${n[1].elo})`;
+ $("#tw").style.visibility=$("#tb").style.visibility="hidden";$("#undo").hidden=$("#hint").hidden=$("#pause").hidden=$("#claim").hidden=true;$("#rev").hidden=false;
+ buildBoard();render();ui();OL.seen=Date.now();const e=endState();if(e)onlineFinish(...e)}
+async function startOnline(id){const c=sbc(),me=NET.profile();const r=await sel(c.from("matches").select("*").eq("id",id).single());
+ if(r.error||!r.data){modal(okBtn(["Erro",esc(NET.tr(r.error))]));return void($("#ok").onclick=closeM)}
+ const m=r.data,oid=m.white_player===me.id?m.black_player:m.white_player,o=await sel(c.from("profiles").select("id,username,elo").eq("id",oid).single());
+ stopClock();closeM();leaveOnline();loadOnline(m,o.data||{id:oid,username:"Adversário",elo:0});show("game");await rpc("join_match",{p_match:id});
+ OL.hb=setInterval(()=>rpc("ping_match",{p_match:id}),15000);OL.poll=setInterval(resync,6000);OL.timer=setInterval(oppWatch,1000);
+ const ch=OL.ch=c.channel("match:"+id,{config:{presence:{key:me.id}}});
+ ch.on("broadcast",{event:"move"},({payload})=>payload&&remoteMove(payload.n,payload.mv)).on("presence",{event:"sync"},oppWatch)
+  .subscribe(s=>{if(s==="SUBSCRIBED")ch.track({t:Date.now()});else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT")resync()})}
+async function sendMove(m,n){const g=G,mv=[m.from,m.path,m.caps];g.pending++;if(OL.ch)OL.ch.send({type:"broadcast",event:"move",payload:{n,mv}});
+ const r=await rpc("record_move",{p_match:g.mid,p_move:mv,p_n:n});g.pending--;if(r.error){$("#st").textContent="Falha ao registrar lance: "+em(r.error);resync()}}
+function remoteMove(n,mv){if(!G||G.mode!="online"||G.over)return;const k=G.moves.length;if(n<k)return;if(n>k||G.side===G.me)return void resync();
+ if(G.anim)return void setTimeout(()=>remoteMove(n,mv),150);
+ const m=Array.isArray(mv)&&findMove(mv);if(!m){$("#st").textContent="Lance inválido do adversário ignorado";return void resync()}OL.seen=Date.now();play(m,true)}
+let syncing=false;
+async function resync(){if(syncing||!G||G.mode!="online"||G.final)return;syncing=true;const g=G;
+ try{const r=await sel(sbc().from("matches").select("*").eq("id",g.mid).single()),m=r.data;if(!m||G!==g||g.final)return;if(m.status!="active")return showResult(m);
+  if(g.over||g.anim||g.pending)return;
+  const db=(m.board_state&&m.board_state.moves)||[],loc=g.moves.map(x=>[x.from,x.path,x.caps]);let k=0;while(k<loc.length&&k<db.length&&JSON.stringify(loc[k])==JSON.stringify(db[k]))k++;
+  if(k==loc.length&&db.length==k+1&&g.side!==g.me){const mm=findMove(db[k]);if(mm)play(mm,true)}
+  else if(k!=loc.length||db.length!=loc.length){loadOnline(m,g.opp)}} // diverge do servidor: reconstrói a partir dele
+ catch(e){console.error(e)}finally{syncing=false}}
+function oppWatch(){if(!G||G.mode!="online"||G.over)return;const here=OL.ch&&OL.ch.presenceState()[G.opp.id];if(here)OL.seen=Date.now();
+ const gone=Date.now()-OL.seen,cl=$("#claim");if(gone>20000){cl.hidden=gone<65000;$("#st").textContent=gone<65000?`Adversário desconectado · reivindicar vitória em ${Math.ceil((65000-gone)/1000)}s`:"Adversário desconectado"}else cl.hidden=true}
+async function onlineFinish(w,why){if(G.over)return;G.over=true;ui();const me=G.me==1?"white":"black",opp=G.me==1?"black":"white";
+ modal(`<h2>Partida encerrada</h2><p>${esc(why)}. Enviando resultado ao servidor…</p>`);
+ const r=await rpc("report_result",{p_match:G.mid,p_claim:w==0?"draw":w==G.me?me:opp,p_reason:"normal"});
+ if(r.error){modal(okBtn(["Erro ao enviar resultado",esc(em(r.error))]));return void($("#ok").onclick=closeM)}
+ if(r.data&&r.data.pending)modal(`<h2>Partida encerrada</h2><p>${esc(why)}. Aguardando confirmação do adversário…</p>`);await resync()}
+function onlineMenu(){modal(`<h2>Abandonar a partida?</h2><p>Abandonar conta como derrota.</p><button class="btn" id="ocn">Continuar jogando</button><button class="btn" id="oab">Abandonar</button>`);
+ $("#ocn").onclick=closeM;$("#oab").onclick=async()=>{await rpc("report_result",{p_match:G.mid,p_claim:G.me==1?"black":"white",p_reason:"resign"});closeM();await resync()}}
+$("#claim").onclick=async()=>{if(!G||G.mode!="online")return;const r=await rpc("report_result",{p_match:G.mid,p_claim:G.me==1?"white":"black",p_reason:"abandon"});if(r.error)$("#st").textContent=em(r.error);await resync()};
+async function refreshProfile(){const p=NET.profile();if(!p)return;const r=await sel(sbc().from("profiles").select("*").eq("id",p.id).single());if(r.data){Object.assign(p,r.data);acctLine()}}
+function showResult(m){if(!G||G.final)return;G.final=true;G.over=true;clearInterval(OL.poll);clearInterval(OL.timer);OL.poll=OL.timer=null;ui();
+ const id=NET.profile().id,w=m.winner,mine=m.white_player===id?m.white_delta:m.black_delta,won=w===id;
+ const t=m.status=="disputed"?"Resultado contestado":m.status=="abandoned"?"Partida cancelada":!w?"Empate":won?"Vitória!":"Derrota";
+ const why={resign:won?"O adversário abandonou.":"Você abandonou.",abandon:won?"O adversário desconectou.":"Você desconectou.",disputed:"Os resultados informados não coincidiram. Nenhum Elo foi alterado.",no_show:"O adversário não entrou na partida.",expired:"Partida expirada."}[m.ended_reason]||"";
+ modal(`<h2>${t}</h2><p>${why}</p>${m.status=="finished"?`<p>Elo online: ${(mine||0)>=0?"+":""}${mine||0}${mine?"":" (sem pontuação: partida curta ou par repetido)"}</p>`:""}<button class="btn pri" id="again">Jogar online de novo</button><button class="btn" id="rvw">Revisar partida</button><button class="btn" id="home">Menu inicial</button>`);
+ $("#again").onclick=()=>{toMenu();queue()};$("#rvw").onclick=()=>{closeM();if(G.hist.length){G.rev=G.hist.length-1;render();ui()}};$("#home").onclick=toMenu;refreshProfile()}
+/* --- ranking global --- */
+async function ranking(){if(!NET||!NET.ready())return conta();modal(`<h2>Ranking global</h2><p>Carregando…</p>`);const c=sbc();
+ const r=await sel(c.from("profiles").select("id,username,elo,wins,losses").order("elo",{ascending:false}).limit(100));
+ if(r.error){modal(okBtn(["Ranking global",esc(NET.tr(r.error))]));return void($("#ok").onclick=closeM)}
+ const me=NET.profile(),rows=r.data||[];let extra="";
+ if(me&&!rows.some(x=>x.id===me.id)){const q=await sel(c.from("profiles").select("id",{count:"exact",head:true}).gt("elo",me.elo));if(!q.error&&q.count!=null)extra=`<p>Sua posição: #${q.count+1} · Elo ${me.elo}</p>`}
+ modal(`<h2>Ranking global</h2>${extra}<div class="tbl">${rows.length?`<table><tr><th>#</th><th>Jogador</th><th>Elo</th><th>V/D</th></tr>${rows.map((x,i)=>`<tr class="${me&&x.id===me.id?"me":""}"><td>${i+1}</td><td>${LG[lg(x.elo)][2]} ${esc(x.username)}</td><td>${x.elo}</td><td>${x.wins}/${x.losses}</td></tr>`).join("")}</table>`:"<p>Ninguém no ranking ainda.</p>"}</div><button class="btn pri" id="ok">Fechar</button>`);$("#ok").onclick=closeM}
+$("#rkon").onclick=queue;$("#rkbd").onclick=ranking;document.addEventListener("visibilitychange",()=>{if(!document.hidden)resync()});
 home();

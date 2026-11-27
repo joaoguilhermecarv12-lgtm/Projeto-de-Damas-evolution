@@ -29,3 +29,5 @@ h1{font-size:clamp(2rem,9vw,3.4rem);margin:18px 0 0;letter-spacing:.08em;text-al
 .box{background:var(--panel);border:1px solid var(--pur);border-radius:16px;padding:22px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:10px;max-height:90dvh;overflow:auto}
 .box h2{margin:0;color:var(--gold)}.box p,.box li{color:var(--mut);margin:0;line-height:1.45}.box ul{padding-left:18px;margin:0}
 .xp{height:8px;background:#4a4843;border-radius:6px;overflow:hidden;width:100%}.xp i{display:block;height:100%;background:var(--pur)}
+.inp{width:100%;padding:12px;border-radius:10px;border:1px solid #4a4843;background:var(--bg);color:var(--txt);font-size:1rem}
+.tbl{max-height:52dvh;overflow:auto;width:100%}.tbl table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}.tbl th,.tbl td{padding:6px 8px;text-align:left;border-bottom:1px solid #4a4843}.tbl tr.me{background:#6f9e3f33;font-weight:700}#st.mine{color:var(--gold);font-weight:700}

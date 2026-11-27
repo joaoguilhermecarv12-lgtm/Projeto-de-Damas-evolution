@@ -2,5 +2,5 @@
   "name": "damas-evolution",
   "version": "3.1.0",
   "private": true,
-  "scripts": { "test": "node tests/static.test.js && node tests/rules.test.js && node tests/ui.test.js" }
+  "scripts": { "test": "node tests/static.test.js && node tests/rules.test.js && node tests/ui.test.js && node tests/online.test.js" }
 }
